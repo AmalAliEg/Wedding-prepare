@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دولاب العروسة | Bridal Wardrobe Tracker</title>
+  
+  <!-- Fonts: Cairo & Playfair Display for Elegant Touch -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <!-- Firebase Compat CDN Scripts (Supports file:// and https://) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Wardrobe Categories Data -->
+  <script src="categories-data.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Cairo', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          },
+          colors: {
+            roseGold: {
+              50: '#FDF8F7',
+              100: '#FAF0EE',
+              200: '#F5DDD8',
+              300: '#EBC4BB',
+              400: '#DEA295',
+              500: '#CF7B6A',
+              600: '#B85E4D',
+              700: '#96483A',
+              800: '#7A3A2F',
+              900: '#643229',
+            },
+            champagne: {
+              50: '#FBF9F4',
+              100: '#F6F1E5',
+              200: '#ECDFC8',
+              300: '#DFC7A3',
+              400: '#CFAE7E',
+              500: '#BA945E',
+              600: '#9B7746',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #DEA295;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #CF7B6A;
+    }
+  </style>
+</head>
+<body class="bg-roseGold-50 text-slate-800 h-full flex flex-col antialiased">
+
+  <!-- Top App Navigation & Header -->
+  <header class="bg-white/80 backdrop-blur-md border-b border-roseGold-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-roseGold-500 to-roseGold-300 text-white flex items-center justify-center shadow-md shadow-roseGold-500/20 text-xl">
+          👰‍♀️
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            دولاب العروسة
+            <span class="text-xs font-normal text-roseGold-600 bg-roseGold-100 px-2 py-0.5 rounded-full border border-roseGold-200 hidden sm:inline">جهاز العروسة 💍</span>
+          </h1>
+          <p class="text-xs text-slate-500">منظّم الملابس والمشتريات الذكي</p>
+        </div>
+      </div>
+
+      <!-- Cloud Sync & Status Indicator -->
+      <div class="flex items-center gap-2">
+        <button id="syncStatusBtn" onclick="openSyncModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition shadow-xs">
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="syncStatusText">وضع محلي (أوفلاين)</span>
+          <span class="text-slate-400">⚙️</span>
+        </button>
+
+        <button onclick="downloadBackup()" title="تنزيل نسخة احتياطية" class="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-roseGold-600 hover:border-roseGold-300 transition text-sm">
+          💾
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <nav class="flex border-b border-roseGold-100 space-x-reverse space-x-2 sm:space-x-6 overflow-x-auto text-sm font-semibold">
+        <button onclick="switchTab('wardrobe')" id="tabBtn-wardrobe" class="tab-btn py-3 px-3 border-b-2 border-roseGold-500 text-roseGold-700 flex items-center gap-1.5 whitespace-nowrap">
+          <span>👗 دولاب الملابس</span>
+          <span id="wardrobeBadge" class="bg-roseGold-100 text-roseGold-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button onclick="switchTab('history')" id="tabBtn-history" class="tab-btn py-3 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+          <span>📋 سجل المشتريات (History)</span>
+          <span id="historyBadge" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button onclick="switchTab('bin')" id="tabBtn-bin" class="tab-btn py-3 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+          <span>🗑️ سلة المحذوفات (Bin)</span>
+          <span id="binBadge" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button onclick="switchTab('dashboard')" id="tabBtn-dashboard" class="tab-btn py-3 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+          <span>⚙️ لوحة التحكم (Dashboard)</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 overflow-y-auto">
+
+    <!-- ==================== TAB 1: WARDROBE (تسجيل اللبس) ==================== -->
+    <section id="tab-wardrobe" class="space-y-6">
+      
+      <!-- Season & Type Dual Switcher Controls -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-roseGold-100 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Season Switcher -->
+        <div class="flex items-center bg-slate-100 p-1.5 rounded-2xl w-full md:w-auto">
+          <button id="season-winter-btn" onclick="setSeason('winter')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-sky-700">
+            <span>❄️ شتوي</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-800" id="winterCountBadge">0</span>
+          </button>
+          <button id="season-summer-btn" onclick="setSeason('summer')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all">
+            <span>☀️ صيفي</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700" id="summerCountBadge">0</span>
+          </button>
+        </div>
+
+        <!-- Section / Place Switcher (Home vs Outdoor) -->
+        <div class="flex items-center bg-roseGold-100/60 p-1.5 rounded-2xl w-full md:w-auto border border-roseGold-200">
+          <button id="type-home-btn" onclick="setType('home')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-roseGold-700">
+            <span>🏠 بيتي</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-roseGold-100 text-roseGold-800" id="homeCountBadge">0</span>
+          </button>
+          <button id="type-outdoor-btn" onclick="setType('outdoor')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all">
+            <span>👠 خروج</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700" id="outdoorCountBadge">0</span>
+          </button>
+        </div>
+
+        <!-- Active View Status Pill -->
+        <div class="hidden lg:flex items-center gap-2 text-xs text-slate-500 bg-roseGold-50 px-4 py-2 rounded-xl border border-roseGold-100">
+          <span>القسم الحالي:</span>
+          <b id="activeSectionTitle" class="text-roseGold-700">❄️ شتوي ← 🏠 بيتي</b>
+        </div>
+      </div>
+
+      <!-- Categories Grid Container -->
+      <div id="categoriesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered Dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: HISTORY (سجل المشتريات) ==================== -->
+    <section id="tab-history" class="hidden space-y-6">
+      
+      <!-- History Quick Stats Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-roseGold-100 shadow-xs">
+          <div class="text-xs text-slate-500">إجمالي المشتريات</div>
+          <div class="text-2xl font-black text-roseGold-600 mt-1" id="statTotalItems">0</div>
+          <div class="text-xs text-slate-400 mt-0.5">قطعة مسجلة</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs">
+          <div class="text-xs text-slate-500">القسم الشتوي</div>
+          <div class="text-2xl font-black text-sky-600 mt-1" id="statWinterItems">0</div>
+          <div class="text-xs text-slate-400 mt-0.5">بيتي + خروج</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs">
+          <div class="text-xs text-slate-500">القسم الصيفي</div>
+          <div class="text-2xl font-black text-amber-600 mt-1" id="statSummerItems">0</div>
+          <div class="text-xs text-slate-400 mt-0.5">بيتي + خروج</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
+          <div class="text-xs text-slate-500">نسبة البيت إلى الخروج</div>
+          <div class="text-base font-bold text-emerald-700 mt-1" id="statRatioItems">0 بيتي / 0 خروج</div>
+          <div class="text-xs text-slate-400 mt-0.5">توازن الدولاب</div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Controls -->
+      <div class="bg-white rounded-2xl p-4 shadow-xs border border-roseGold-100 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-[220px]">
+          <div class="relative">
+            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">🔍</span>
+            <input type="text" id="historySearchInput" oninput="filterHistory()" placeholder="ابحثي عن قطعة، لون، أو في الملاحظات..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-3 py-2 text-sm focus:outline-hidden focus:border-roseGold-400">
+          </div>
+        </div>
+
+        <select id="historySeasonFilter" onchange="filterHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+          <option value="all">كل الفصول (شتوي + صيفي)</option>
+          <option value="winter">❄️ شتوي فقط</option>
+          <option value="summer">☀️ صيفي فقط</option>
+        </select>
+
+        <select id="historyTypeFilter" onchange="filterHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+          <option value="all">الكل (بيتي + خروج)</option>
+          <option value="home">🏠 بيتي فقط</option>
+          <option value="outdoor">👠 خروج فقط</option>
+        </select>
+
+        <select id="historySortOrder" onchange="filterHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+          <option value="newest">📅 الأحدث شراءً أولاً</option>
+          <option value="oldest">📅 الأقدم شراءً أولاً</option>
+          <option value="qtyDesc">🔢 الأكثر عدداً أولاً</option>
+        </select>
+      </div>
+
+      <!-- History Items Feed / Container -->
+      <div id="historyContainer" class="space-y-4">
+        <!-- Rendered Dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: BIN (سلة المحذوفات) ==================== -->
+    <section id="tab-bin" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-5 shadow-xs border border-roseGold-100 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+            <span>🗑️ سلة المحذوفات</span>
+            <span id="binCountHeader" class="text-xs bg-roseGold-100 text-roseGold-800 px-2.5 py-1 rounded-full font-bold">0 قطعة</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            القطع المحذوفة تظل هنا محتفظة بتاريخ شرائها الأصلي. يمكنك استرجاعها للدولاب أو مسحها نهائياً.
+          </p>
+        </div>
+
+        <button onclick="emptyBinPermanently()" id="emptyBinBtn" class="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition">
+          🧹 إفراغ السلة بالكامل نهائياً
+        </button>
+      </div>
+
+      <div id="binItemsContainer" class="space-y-3">
+        <!-- Rendered Dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: DASHBOARD (لوحة التحكم) ==================== -->
+    <section id="tab-dashboard" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Category Manager Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-xs border border-roseGold-100 space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+              <span>🏷️ إدارة الفئات والأقسام</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">إضافة، تعديل مسميات، مسح، أو إعادة ترتيب الفئات في كل قسم</p>
+          </div>
+
+          <!-- Section Selectors for Dashboard -->
+          <div class="grid grid-cols-2 gap-3">
+            <select id="dashSeasonSelect" onchange="renderDashboardCategories()" class="bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+              <option value="winter">❄️ شتوي</option>
+              <option value="summer">☀️ صيفي</option>
+            </select>
+            <select id="dashTypeSelect" onchange="renderDashboardCategories()" class="bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+              <option value="home">🏠 بيتي</option>
+              <option value="outdoor">👠 خروج</option>
+            </select>
+          </div>
+
+          <!-- Add New Category Form -->
+          <div class="bg-roseGold-50/60 p-3.5 rounded-xl border border-roseGold-100 space-y-2.5">
+            <span class="text-xs font-bold text-roseGold-800">➕ إضافة فئة جديدة للقسم المحدد:</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input type="text" id="newCatNameAr" placeholder="اسم الفئة بالعربي (مثال: شيلان)" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-hidden">
+              <input type="text" id="newCatNameEn" placeholder="بالإنجليزي (مثال: Shawls)" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-hidden">
+            </div>
+            <button onclick="addNewCategoryFromDashboard()" class="w-full bg-roseGold-600 hover:bg-roseGold-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-xs">
+              إضافة الفئة
+            </button>
+          </div>
+
+          <!-- Category List with Reorder & Delete -->
+          <div id="dashCategoriesList" class="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Dropdown Pieces Manager Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-xs border border-roseGold-100 space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+              <span>👕 إدارة خيارات القطع (Dropdown Items)</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">إضافة أو حذف أنواع القطع التي تظهر في القائمة المنسدلة لكل فئة</p>
+          </div>
+
+          <!-- Select which category to edit -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">اختاري الفئة لتعديل قطعها:</label>
+            <select id="dashPiecesCategorySelect" onchange="renderDashboardPiecesList()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm">
+              <!-- Rendered via JS -->
+            </select>
+          </div>
+
+          <!-- Add New Piece Form -->
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <span class="text-xs font-bold text-slate-700">➕ إضافة قطعة جديدة للقائمة:</span>
+            <div class="flex gap-2">
+              <input type="text" id="newPieceInput" placeholder="مثال: بلوزة دانتيل · Lace Blouse" class="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-hidden">
+              <button onclick="addNewPieceFromDashboard()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-1.5 rounded-xl text-xs transition">
+                إضافة
+              </button>
+            </div>
+          </div>
+
+          <!-- Pieces List -->
+          <div id="dashPiecesList" class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Backup, Restore & Reset Settings -->
+      <div class="bg-white rounded-2xl p-5 shadow-xs border border-roseGold-100">
+        <h3 class="font-bold text-slate-900 text-base mb-1">💾 النسخ الاحتياطي وإعادة الضبط</h3>
+        <p class="text-xs text-slate-500 mb-4">احفظي بيانات جهازك كملف خارجي في أي وقت لضمان عدم ضياع أي تفاصيل</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button onclick="downloadBackup()" class="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 p-3 rounded-xl font-bold text-xs transition">
+            <span>📥 تصدير نسخة احتياطية (JSON)</span>
+          </button>
+
+          <label class="flex items-center justify-center gap-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 p-3 rounded-xl font-bold text-xs transition cursor-pointer">
+            <span>📤 استيراد نسخة احتياطية</span>
+            <input type="file" id="importFileInput" accept=".json" onchange="importBackup(event)" class="hidden">
+          </label>
+
+          <button onclick="resetToDefaultTaxonomyConfirm()" class="flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 p-3 rounded-xl font-bold text-xs transition">
+            <span>🔄 استعادة الفئات الافتراضية للعروسة</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Edit Item Modal (Allows editing piece, color, quantity, notes, and purchase date) -->
+  <div id="editItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-roseGold-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base">✏️ تعديل تفاصيل القطعة</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="editItemId">
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">نوع القطعة:</label>
+          <input type="text" id="editPieceName" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">الكمية:</label>
+            <input type="number" id="editQuantity" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ الشراء:</label>
+            <input type="date" id="editPurchaseDate" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">اسم اللون:</label>
+          <div class="flex gap-2 items-center">
+            <input type="color" id="editColorHex" class="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0.5">
+            <input type="text" id="editColorName" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات / محل / سعر:</label>
+          <textarea id="editNotes" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm"></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="saveItemEdits()" class="flex-1 bg-roseGold-600 hover:bg-roseGold-700 text-white font-bold py-2.5 rounded-xl text-sm transition">
+          حفظ التعديلات
+        </button>
+        <button onclick="closeEditModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">
+          إلغاء
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync / Firebase Setup Modal -->
+  <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-roseGold-200 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <span>⚙️ التزامن السحابي وحساب Google</span>
+        </h3>
+        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <!-- Current status -->
+      <div class="bg-roseGold-50 p-3.5 rounded-xl border border-roseGold-100 space-y-1">
+        <div class="text-xs font-bold text-roseGold-900">حالة التزامن الحالية:</div>
+        <div id="modalSyncStatusDetails" class="text-xs text-slate-700">يعمل التطبيق محلياً على هذا الجهاز بأمان تام.</div>
+      </div>
+
+      <!-- Google Sign In Button if Configured -->
+      <div id="googleAuthSection" class="border border-slate-200 p-4 rounded-xl space-y-3">
+        <span class="block text-xs font-bold text-slate-700">تسجيل الدخول بحساب Google:</span>
+        <div id="googleUserDisplay" class="hidden items-center justify-between bg-slate-50 p-2.5 rounded-xl">
+          <div class="flex items-center gap-2.5">
+            <img id="userAvatar" src="" class="w-8 h-8 rounded-full border border-slate-200">
+            <div>
+              <div id="userName" class="text-xs font-bold text-slate-800"></div>
+              <div id="userEmail" class="text-[11px] text-slate-500"></div>
+            </div>
+          </div>
+          <button onclick="handleGoogleSignOut()" class="text-xs text-red-600 hover:underline font-bold">تسجيل خروج</button>
+        </div>
+        <button id="googleSignInBtn" onclick="handleGoogleSignIn()" class="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-xs">
+          <span>🔑 تسجيل الدخول بحساب Google</span>
+        </button>
+      </div>
+
+      <!-- Firebase Config Input -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-slate-700">
+          إعدادات مشروع Firebase (firebaseConfig JSON):
+        </label>
+        <p class="text-[11px] text-slate-500">انسخي كود الإعدادات من لوحة تحكم Firebase والصقيه هنا لتفعيل التزامن بين أجهزتك.</p>
+        <textarea id="firebaseConfigInput" rows="5" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "my-wardrobe.firebaseapp.com",\n  "projectId": "my-wardrobe",\n  "appId": "..."\n}' class="w-full font-mono text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-hidden"></textarea>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="saveFirebaseConfig()" class="flex-1 bg-roseGold-600 hover:bg-roseGold-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+          حفظ إعدادات Firebase وتفعيل التزامن
+        </button>
+        <button onclick="clearFirebaseConfig()" class="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+          مسح والعودة للمحلي
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-2xl shadow-xl text-xs font-bold transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+    <span id="toastIcon">✨</span>
+    <span id="toastMessage">تم الحفظ بنجاح</span>
+  </div>
+
+  <!-- Main Application Script (Standard Script for direct file:// and https:// compatibility) -->
+  <script>
+    // Categories and Colors (Loaded from categories-data.js)
+    var defaultCategories = window.defaultCategories || {};
+    var presetColors = window.presetColors || [];
+
+    // Application State
+    const STATE_KEY = 'bridal_wardrobe_state_v1';
+    const FIREBASE_KEY = 'bridal_wardrobe_firebase_config';
+
+    let appState = {
+      season: 'winter',   // 'winter' | 'summer'
+      type: 'home',       // 'home' | 'outdoor'
+      categories: JSON.parse(JSON.stringify(defaultCategories)),
+      items: [],          // active purchased items
+      bin: [],            // deleted items
+      selectedColors: {}, // temporary color selection by categoryId
+      quantities: {}      // temporary quantity selection by categoryId
+    };
+
+    let fbApp = null;
+    let fbAuth = null;
+    let fbDb = null;
+    let currentUser = null;
+    let firestoreUnsubscribe = null;
+
+    // Make functions available globally for HTML event handlers
+    window.switchTab = switchTab;
+    window.setSeason = setSeason;
+    window.setType = setType;
+    window.selectColorPreset = selectColorPreset;
+    window.openCustomColorPicker = openCustomColorPicker;
+    window.handleCustomColorChange = handleCustomColorChange;
+    window.changeCategoryQty = changeCategoryQty;
+    window.addItemToCategory = addItemToCategory;
+    window.deleteItemWithQuantityPrompt = deleteItemWithQuantityPrompt;
+    window.openEditModal = openEditModal;
+    window.closeEditModal = closeEditModal;
+    window.saveItemEdits = saveItemEdits;
+    window.restoreItemFromBin = restoreItemFromBin;
+    window.deleteItemPermanently = deleteItemPermanently;
+    window.emptyBinPermanently = emptyBinPermanently;
+    window.filterHistory = filterHistory;
+    window.downloadBackup = downloadBackup;
+    window.importBackup = importBackup;
+    window.resetToDefaultTaxonomyConfirm = resetToDefaultTaxonomyConfirm;
+    window.renderDashboardCategories = renderDashboardCategories;
+    window.renderDashboardPiecesList = renderDashboardPiecesList;
+    window.addNewCategoryFromDashboard = addNewCategoryFromDashboard;
+    window.deleteCategoryFromDashboard = deleteCategoryFromDashboard;
+    window.moveCategoryPosition = moveCategoryPosition;
+    window.addNewPieceFromDashboard = addNewPieceFromDashboard;
+    window.deletePieceFromDashboard = deletePieceFromDashboard;
+    window.openSyncModal = openSyncModal;
+    window.closeSyncModal = closeSyncModal;
+    window.saveFirebaseConfig = saveFirebaseConfig;
+    window.clearFirebaseConfig = clearFirebaseConfig;
+    window.handleGoogleSignIn = handleGoogleSignIn;
+    window.handleGoogleSignOut = handleGoogleSignOut;
+
+    // ==================== INITIALIZATION ====================
+    function init() {
+      loadLocalState();
+      initFirebaseIfConfigured();
+      renderAll();
+      setupDashboardListeners();
+    }
+
+    function loadLocalState() {
+      const saved = localStorage.getItem(STATE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          appState.categories = parsed.categories || JSON.parse(JSON.stringify(defaultCategories));
+          appState.items = parsed.items || [];
+          appState.bin = parsed.bin || [];
+        } catch (e) {
+          console.error('Error loading local state:', e);
+        }
+      }
+    }
+
+    function saveState(skipCloud = false) {
+      localStorage.setItem(STATE_KEY, JSON.stringify({
+        categories: appState.categories,
+        items: appState.items,
+        bin: appState.bin
+      }));
+      updateBadges();
+
+      if (!skipCloud && fbDb && currentUser) {
+        syncToCloud();
+      }
+    }
+
+    // ==================== FIREBASE & CLOUD SYNC ====================
+    function initFirebaseIfConfigured() {
+      let configStr = localStorage.getItem(FIREBASE_KEY);
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncStatusText');
+
+      // Pre-fill user's configuration automatically
+      if (!configStr) {
+        const defaultCfg = {
+          apiKey: "AIzaSyDGbEA1cLZ6YMjbngeZNwuOgSSLjt0_Wgc",
+          authDomain: "wedding-prep-7ae65.firebaseapp.com",
+          projectId: "wedding-prep-7ae65",
+          storageBucket: "wedding-prep-7ae65.firebasestorage.app",
+          messagingSenderId: "565229705573",
+          appId: "1:565229705573:web:d4405b38d632f6ec47298c"
+        };
+        configStr = JSON.stringify(defaultCfg, null, 2);
+        localStorage.setItem(FIREBASE_KEY, configStr);
+      }
+
+      try {
+        const config = JSON.parse(configStr);
+        const input = document.getElementById('firebaseConfigInput');
+        if (input) input.value = JSON.stringify(config, null, 2);
+
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+          console.warn("Firebase SDK not loaded or offline");
+          if (dot) dot.className = "w-2 h-2 rounded-full bg-amber-400";
+          if (text) text.textContent = "وضع محلي (سيرفر فايربيز غير متاح)";
+          return;
+        }
+
+        if (!firebase.apps || !firebase.apps.length) {
+          fbApp = firebase.initializeApp(config);
+        } else {
+          fbApp = firebase.app();
+        }
+        fbAuth = firebase.auth();
+        fbDb = firebase.firestore();
+
+        fbAuth.onAuthStateChanged((user) => {
+          currentUser = user;
+          updateAuthUI(user);
+          if (user) {
+            setupFirestoreListener(user.uid);
+          } else {
+            if (firestoreUnsubscribe) firestoreUnsubscribe();
+            if (dot) dot.className = "w-2 h-2 rounded-full bg-amber-400";
+            if (text) text.textContent = "يرجى تسجيل الدخول بحساب Google";
+          }
+        });
+      } catch (err) {
+        console.error("Firebase init failed:", err);
+        if (dot) dot.className = "w-2 h-2 rounded-full bg-red-500";
+        if (text) text.textContent = "خطأ في إعدادات Firebase";
+      }
+    }
+
+    function setupFirestoreListener(uid) {
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncStatusText');
+      
+      const docRef = fbDb.collection("users").doc(uid).collection("wardrobe").doc("master_data");
+      
+      firestoreUnsubscribe = docRef.onSnapshot((docSnap) => {
+        if (docSnap.exists) {
+          const cloudData = docSnap.data();
+          if (cloudData.categories) appState.categories = cloudData.categories;
+          if (cloudData.items) appState.items = cloudData.items;
+          if (cloudData.bin) appState.bin = cloudData.bin;
+          saveState(true); // Save locally without echoing back to cloud
+          renderAll();
+        } else {
+          // Upload initial state if cloud is empty
+          syncToCloud();
+        }
+        if (dot) dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+        if (text) text.textContent = "متزامن سحابياً 🟢";
+      }, (err) => {
+        console.error("Firestore listen error:", err);
+        if (dot) dot.className = "w-2 h-2 rounded-full bg-red-400";
+        if (text) text.textContent = "فشل التزامن السحابي";
+      });
+    }
+
+    async function syncToCloud() {
+      if (!fbDb || !currentUser) return;
+      try {
+        const docRef = fbDb.collection("users").doc(currentUser.uid).collection("wardrobe").doc("master_data");
+        await docRef.set({
+          categories: appState.categories,
+          items: appState.items,
+          bin: appState.bin,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Cloud sync failed:", e);
+      }
+    }
+
+    function updateAuthUI(user) {
+      const userDisplay = document.getElementById('googleUserDisplay');
+      const signInBtn = document.getElementById('googleSignInBtn');
+      const statusText = document.getElementById('modalSyncStatusDetails');
+
+      if (user) {
+        if (userDisplay) {
+          userDisplay.classList.remove('hidden');
+          userDisplay.classList.add('flex');
+        }
+        if (signInBtn) signInBtn.classList.add('hidden');
+        const un = document.getElementById('userName');
+        if (un) un.textContent = user.displayName || 'عروسة';
+        const ue = document.getElementById('userEmail');
+        if (ue) ue.textContent = user.email || '';
+        const ua = document.getElementById('userAvatar');
+        if (ua) ua.src = user.photoURL || 'https://via.placeholder.com/32';
+        if (statusText) statusText.innerHTML = `متصل بحساب <b>${user.email}</b>. يتم التزامن تلقائياً وبأمان بين كافة أجهزتك.`;
+      } else {
+        if (userDisplay) {
+          userDisplay.classList.add('hidden');
+          userDisplay.classList.remove('flex');
+        }
+        if (signInBtn) signInBtn.classList.remove('hidden');
+        if (statusText) statusText.textContent = "تم إدخال إعدادات Firebase ولكن لم يتم تسجيل الدخول بعد.";
+      }
+    }
+
+    async function handleGoogleSignIn() {
+      if (!fbAuth) {
+        showToast("يرجى إدخال إعدادات Firebase أولاً", "⚠️");
+        return;
+      }
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await fbAuth.signInWithPopup(provider);
+        showToast("تم تسجيل الدخول بنجاح! جاري التزامن...", "🎉");
+      } catch (err) {
+        console.error(err);
+        if (err.code === 'auth/operation-not-supported-in-this-environment') {
+          alert("تنبيه: تسجيل الدخول بحساب Google يحتاج تشغيل الصفحة عبر رابط ويب (مثل GitHub Pages أو localhost) لحماية حسابك من المتصفح.\n\nارفعي الصفحة على GitHub Pages لتفتحيها بحسابك من الموبايل واللابتوب معاً، أو يمكنكِ استخدام التطبيق الآن على هذا الجهاز محلياً بكامل مميزاته!");
+        } else {
+          alert("رسالة من Firebase: " + err.message);
+        }
+      }
+    }
+
+    async function handleGoogleSignOut() {
+      if (!fbAuth) return;
+      await fbAuth.signOut();
+      showToast("تم تسجيل الخروج", "👋");
+    }
+
+    function saveFirebaseConfig() {
+      let val = document.getElementById('firebaseConfigInput').value.trim();
+      let parsed = null;
+
+      // 1. Try direct JSON parse
+      try {
+        parsed = JSON.parse(val);
+      } catch (e) {}
+
+      // 2. If not, extract { ... } and evaluate safely
+      if (!parsed) {
+        const match = val.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            parsed = (new Function('return (' + match[0] + ')'))();
+          } catch (e) {}
+        }
+      }
+
+      if (parsed && (parsed.apiKey || parsed.projectId)) {
+        localStorage.setItem(FIREBASE_KEY, JSON.stringify(parsed, null, 2));
+        closeSyncModal();
+        showToast("تم حفظ إعدادات Firebase بنجاح! ✨", "🎉");
+        setTimeout(() => location.reload(), 600);
+      } else {
+        alert("لم نتمكن من التعرف على كود الإعدادات. تأكدي من نسخه كاملاً.");
+      }
+    }
+
+    function clearFirebaseConfig() {
+      if (confirm("هل ترغبين في مسح إعدادات Firebase والعودة للوضع المحلي؟")) {
+        localStorage.removeItem(FIREBASE_KEY);
+        closeSyncModal();
+        location.reload();
+      }
+    }
+
+    // ==================== RENDERING & NAVIGATION ====================
+    function switchTab(tab) {
+      ['wardrobe', 'history', 'bin', 'dashboard'].forEach(t => {
+        const sec = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tab) {
+          sec.classList.remove('hidden');
+          btn.className = "tab-btn py-3 px-3 border-b-2 border-roseGold-500 text-roseGold-700 flex items-center gap-1.5 whitespace-nowrap font-bold";
+        } else {
+          sec.classList.add('hidden');
+          btn.className = "tab-btn py-3 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 whitespace-nowrap";
+        }
+      });
+
+      if (tab === 'history') renderHistory();
+      if (tab === 'bin') renderBin();
+      if (tab === 'dashboard') {
+        renderDashboardCategories();
+        renderDashboardPiecesSelect();
+      }
+    }
+
+    function setSeason(season) {
+      appState.season = season;
+      const winterBtn = document.getElementById('season-winter-btn');
+      const summerBtn = document.getElementById('season-summer-btn');
+
+      if (season === 'winter') {
+        winterBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-sky-700";
+        summerBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all";
+      } else {
+        summerBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-amber-700";
+        winterBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all";
+      }
+      updateActiveSectionTitle();
+      renderWardrobeCategories();
+    }
+
+    function setType(type) {
+      appState.type = type;
+      const homeBtn = document.getElementById('type-home-btn');
+      const outdoorBtn = document.getElementById('type-outdoor-btn');
+
+      if (type === 'home') {
+        homeBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-roseGold-700";
+        outdoorBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all";
+      } else {
+        outdoorBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs bg-white text-purple-700";
+        homeBtn.className = "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-900 transition-all";
+      }
+      updateActiveSectionTitle();
+      renderWardrobeCategories();
+    }
+
+    function updateActiveSectionTitle() {
+      const seasonIcon = appState.season === 'winter' ? '❄️ شتوي' : '☀️ صيفي';
+      const typeIcon = appState.type === 'home' ? '🏠 بيتي' : '👠 خروج';
+      document.getElementById('activeSectionTitle').textContent = `${seasonIcon} ← ${typeIcon}`;
+    }
+
+    function updateBadges() {
+      const total = appState.items.reduce((s, it) => s + (it.quantity || 1), 0);
+      const binTotal = appState.bin.reduce((s, it) => s + (it.quantity || 1), 0);
+
+      const winterTotal = appState.items.filter(it => it.season === 'winter').reduce((s, it) => s + (it.quantity || 1), 0);
+      const summerTotal = appState.items.filter(it => it.season === 'summer').reduce((s, it) => s + (it.quantity || 1), 0);
+      const homeTotal = appState.items.filter(it => it.type === 'home').reduce((s, it) => s + (it.quantity || 1), 0);
+      const outdoorTotal = appState.items.filter(it => it.type === 'outdoor').reduce((s, it) => s + (it.quantity || 1), 0);
+
+      document.getElementById('wardrobeBadge').textContent = total;
+      document.getElementById('historyBadge').textContent = total;
+      document.getElementById('binBadge').textContent = binTotal;
+
+      document.getElementById('winterCountBadge').textContent = winterTotal;
+      document.getElementById('summerCountBadge').textContent = summerTotal;
+      document.getElementById('homeCountBadge').textContent = homeTotal;
+      document.getElementById('outdoorCountBadge').textContent = outdoorTotal;
+
+      // Stats card badges in History tab
+      document.getElementById('statTotalItems').textContent = total;
+      document.getElementById('statWinterItems').textContent = winterTotal;
+      document.getElementById('statSummerItems').textContent = summerTotal;
+      document.getElementById('statRatioItems').textContent = `${homeTotal} بيتي / ${outdoorTotal} خروج`;
+    }
+
+    function renderAll() {
+      updateBadges();
+      updateActiveSectionTitle();
+      renderWardrobeCategories();
+    }
+
+    // ==================== TAB 1: CATEGORIES & QUICK ADD ====================
+    function renderWardrobeCategories() {
+      const grid = document.getElementById('categoriesGrid');
+      const cats = appState.categories[appState.season]?.[appState.type] || [];
+
+      if (cats.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl p-10 text-center border border-dashed border-roseGold-200">
+            <span class="text-4xl block mb-2">📭</span>
+            <h4 class="font-bold text-slate-700">لا توجد فئات مسجلة في هذا القسم بعد</h4>
+            <p class="text-xs text-slate-500 mt-1">يمكنك إضافة فئات جديدة بكل سهولة من لوحة التحكم (Dashboard)</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = cats.map(cat => {
+        // Find existing items in this category
+        const catItems = appState.items.filter(it => 
+          it.season === appState.season && 
+          it.type === appState.type && 
+          it.categoryId === cat.id
+        );
+        const count = catItems.reduce((s, it) => s + (it.quantity || 1), 0);
+
+        // Current temporary selection
+        const currentColor = appState.selectedColors[cat.id] || presetColors[0];
+        const currentQty = appState.quantities[cat.id] || 1;
+
+        return `
+          <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-roseGold-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            
+            <!-- Category Header -->
+            <div>
+              <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-base leading-tight">${cat.nameAr}</h3>
+                  <span class="text-[11px] text-slate-400 font-sans tracking-wide">${cat.nameEn}</span>
+                </div>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${count > 0 ? 'bg-roseGold-100 text-roseGold-800' : 'bg-slate-100 text-slate-500'}">
+                  ${count} قطعة
+                </span>
+              </div>
+
+              <!-- Quick Add Controls Form -->
+              <div class="space-y-3 bg-roseGold-50/50 p-3 rounded-xl border border-roseGold-100">
+                
+                <!-- Piece Dropdown + Quantity -->
+                <div class="flex items-center gap-2">
+                  <select id="pieceSelect-${cat.id}" class="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:border-roseGold-400 truncate">
+                    ${cat.items.map(p => `<option value="${p}">${p}</option>`).join('')}
+                  </select>
+
+                  <div class="flex items-center bg-white border border-slate-200 rounded-xl px-1">
+                    <button onclick="changeCategoryQty('${cat.id}', -1)" class="w-6 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 font-bold">−</button>
+                    <span id="qtyBadge-${cat.id}" class="px-1.5 text-xs font-bold text-slate-800 min-w-[18px] text-center">${currentQty}</span>
+                    <button onclick="changeCategoryQty('${cat.id}', 1)" class="w-6 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 font-bold">+</button>
+                  </div>
+                </div>
+
+                <!-- Color Palette Swatches -->
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
+                    <span>اللون: <b id="colorNameLabel-${cat.id}" class="text-slate-800 font-bold">${currentColor.ar}</b></span>
+                    <label class="cursor-pointer text-roseGold-600 hover:text-roseGold-800 font-bold flex items-center gap-1">
+                      <span>🎨 لون مخصص</span>
+                      <input type="color" onchange="handleCustomColorChange('${cat.id}', this.value)" class="opacity-0 w-0 h-0">
+                    </label>
+                  </div>
+
+                  <!-- Horizontal Swatch Bar -->
+                  <div class="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+                    ${presetColors.slice(0, 15).map(c => `
+                      <button 
+                        type="button" 
+                        title="${c.ar} (${c.en})" 
+                        onclick="selectColorPreset('${cat.id}', '${c.en}', '${c.ar}', '${c.hex}')" 
+                        class="w-6 h-6 rounded-full shrink-0 border-2 transition-transform ${currentColor.hex === c.hex ? 'border-roseGold-600 scale-110 shadow-xs' : 'border-slate-200 hover:scale-105'}"
+                        style="background: ${c.hex === 'gradient' ? 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' : c.hex};">
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Notes & Add Button -->
+                <div class="flex items-center gap-2">
+                  <input type="text" id="notesInput-${cat.id}" placeholder="ملاحظات / محل / سعر (اختياري)" class="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 focus:outline-hidden focus:border-roseGold-400">
+                  <button onclick="addItemToCategory('${cat.id}')" class="bg-roseGold-600 hover:bg-roseGold-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition shadow-xs shrink-0">
+                    <span>+ إضافة</span>
+                  </button>
+                </div>
+
+              </div>
+
+              <!-- List of Active Items in this Category -->
+              <div class="mt-4 space-y-2">
+                ${catItems.length === 0 ? `
+                  <div class="text-center py-4 text-xs text-slate-400">لم تضاف أي قطع هنا بعد 🧺</div>
+                ` : `
+                  <ul class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                    ${catItems.map(it => `
+                      <li class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs hover:bg-roseGold-50/40 transition">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="w-3.5 h-3.5 rounded-full shrink-0 border border-slate-300 shadow-2xs" style="background: ${it.color.hex === 'gradient' ? 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' : it.color.hex};"></span>
+                          <div class="truncate">
+                            <span class="font-bold text-slate-800">${it.piece.split(' · ')[0]}</span>
+                            <span class="text-[11px] text-slate-500 mr-1 font-medium">(${it.color.ar})</span>
+                            ${it.quantity > 1 ? `<span class="bg-slate-200 text-slate-700 font-black rounded-md px-1.5 py-0.2 text-[10px] mx-1">×${it.quantity}</span>` : ''}
+                            ${it.notes ? `<span class="block text-[10px] text-slate-500 truncate mt-0.5">📝 ${it.notes}</span>` : ''}
+                          </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0 text-slate-400">
+                          <span class="text-[10px] text-slate-400 ml-1">📅 ${formatArabicDate(it.purchaseDate)}</span>
+                          <button onclick="openEditModal('${it.id}')" title="تعديل" class="hover:text-roseGold-600 p-1 text-xs">✏️</button>
+                          <button onclick="deleteItemWithQuantityPrompt('${it.id}')" title="حذف وإرسال للسلة" class="hover:text-red-600 p-1 text-xs">🗑️</button>
+                        </div>
+                      </li>
+                    `).join('')}
+                  </ul>
+                `}
+              </div>
+
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectColorPreset(catId, en, ar, hex) {
+      appState.selectedColors[catId] = { en, ar, hex };
+      const label = document.getElementById(`colorNameLabel-${catId}`);
+      if (label) label.textContent = ar;
+      renderWardrobeCategories();
+    }
+
+    function handleCustomColorChange(catId, hex) {
+      const nearest = estimateColorName(hex);
+      const name = prompt("ما اسم هذا اللون؟", nearest) || nearest;
+      appState.selectedColors[catId] = { en: "Custom", ar: name, hex: hex };
+      renderWardrobeCategories();
+    }
+
+    function openCustomColorPicker(catId) {
+      // Handled via <input type="color">
+    }
+
+    function changeCategoryQty(catId, delta) {
+      const current = appState.quantities[catId] || 1;
+      const next = Math.max(1, current + delta);
+      appState.quantities[catId] = next;
+      const badge = document.getElementById(`qtyBadge-${catId}`);
+      if (badge) badge.textContent = next;
+    }
+
+    function addItemToCategory(catId) {
+      const pieceSelect = document.getElementById(`pieceSelect-${catId}`);
+      const notesInput = document.getElementById(`notesInput-${catId}`);
+
+      const piece = pieceSelect ? pieceSelect.value : '';
+      const notes = notesInput ? notesInput.value.trim() : '';
+      const color = appState.selectedColors[catId] || presetColors[0];
+      const quantity = appState.quantities[catId] || 1;
+
+      if (!piece) return;
+
+      const newItem = {
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        season: appState.season,
+        type: appState.type,
+        categoryId: catId,
+        piece: piece,
+        color: color,
+        quantity: quantity,
+        notes: notes,
+        purchaseDate: new Date().toISOString().split('T')[0], // Fixed ISO date
+        createdAt: new Date().toISOString()
+      };
+
+      appState.items.unshift(newItem);
+      
+      // Reset inputs
+      if (notesInput) notesInput.value = '';
+      appState.quantities[catId] = 1;
+
+      saveState();
+      renderAll();
+      showToast(`تمت إضافة "${piece.split(' · ')[0]}" إلى الدولاب`, "✨");
+    }
+
+    // ==================== DELETION TO BIN & RESTORE ====================
+    function deleteItemWithQuantityPrompt(itemId) {
+      const index = appState.items.findIndex(it => it.id === itemId);
+      if (index === -1) return;
+
+      const item = appState.items[index];
+      let deleteQty = item.quantity;
+
+      if (item.quantity > 1) {
+        const promptVal = prompt(`عندك ${item.quantity} من "${item.piece.split(' · ')[0]}". عايزة تمسحي كام قطعة؟`, "1");
+        if (promptVal === null) return; // Cancelled
+        deleteQty = parseInt(promptVal);
+        if (isNaN(deleteQty) || deleteQty <= 0) return;
+        deleteQty = Math.min(deleteQty, item.quantity);
+      }
+
+      // Add to Bin
+      const binnedItem = {
+        ...item,
+        id: 'bin_' + Date.now(),
+        originalItemId: item.id,
+        quantity: deleteQty,
+        deletedAt: new Date().toISOString()
+      };
+      appState.bin.unshift(binnedItem);
+
+      // Decrement or remove from active items
+      if (item.quantity > deleteQty) {
+        item.quantity -= deleteQty;
+      } else {
+        appState.items.splice(index, 1);
+      }
+
+      saveState();
+      renderAll();
+      showToast(`تم نقل ${deleteQty} قطعة لسلة المحذوفات`, "🗑️");
+    }
+
+    function restoreItemFromBin(binId) {
+      const index = appState.bin.findIndex(it => it.id === binId);
+      if (index === -1) return;
+
+      const item = appState.bin[index];
+
+      // Verify if category still exists; if not, recreate it!
+      let cat = appState.categories[item.season]?.[item.type]?.find(c => c.id === item.categoryId);
+      if (!cat) {
+        if (!appState.categories[item.season]) appState.categories[item.season] = {};
+        if (!appState.categories[item.season][item.type]) appState.categories[item.season][item.type] = [];
+        cat = {
+          id: item.categoryId,
+          nameAr: "فئة مسترجعة",
+          nameEn: "Restored Category",
+          items: [item.piece]
+        };
+        appState.categories[item.season][item.type].push(cat);
+      }
+
+      // Restore to active items
+      const restored = {
+        id: 'item_' + Date.now(),
+        season: item.season,
+        type: item.type,
+        categoryId: item.categoryId,
+        piece: item.piece,
+        color: item.color,
+        quantity: item.quantity,
+        notes: item.notes,
+        purchaseDate: item.purchaseDate, // Preserves original purchase date!
+        createdAt: item.createdAt || new Date().toISOString()
+      };
+
+      appState.items.unshift(restored);
+      appState.bin.splice(index, 1);
+
+      saveState();
+      renderAll();
+      renderBin();
+      showToast("تم استرجاع القطعة بنجاح إلى الدولاب بتاريخها الأصلي", "🔄");
+    }
+
+    function deleteItemPermanently(binId) {
+      if (!confirm("هل أنت متأكدة من مسح هذه القطعة نهائياً من السلة؟")) return;
+      appState.bin = appState.bin.filter(it => it.id !== binId);
+      saveState();
+      renderBin();
+      updateBadges();
+      showToast("تم المسح النهائي", "❌");
+    }
+
+    function emptyBinPermanently() {
+      if (appState.bin.length === 0) return;
+      if (!confirm(`هل أنتِ متأكدة من إفراغ السلة بالكامل؟ (${appState.bin.length} عنصر سيتم حذفه نهائياً)`)) return;
+      appState.bin = [];
+      saveState();
+      renderBin();
+      updateBadges();
+      showToast("تم إفراغ سلة المحذوفات بالكامل", "🧹");
+    }
+
+    // ==================== EDIT ITEM MODAL ====================
+    function openEditModal(itemId) {
+      const it = appState.items.find(x => x.id === itemId);
+      if (!it) return;
+
+      document.getElementById('editItemId').value = it.id;
+      document.getElementById('editPieceName').value = it.piece;
+      document.getElementById('editQuantity').value = it.quantity || 1;
+      document.getElementById('editPurchaseDate').value = it.purchaseDate;
+      document.getElementById('editColorName').value = it.color.ar;
+      document.getElementById('editColorHex').value = it.color.hex === 'gradient' ? '#cf7b6a' : it.color.hex;
+      document.getElementById('editNotes').value = it.notes || '';
+
+      document.getElementById('editItemModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editItemModal').classList.add('hidden');
+    }
+
+    function saveItemEdits() {
+      const id = document.getElementById('editItemId').value;
+      const it = appState.items.find(x => x.id === id);
+      if (!it) return;
+
+      it.piece = document.getElementById('editPieceName').value.trim();
+      it.quantity = Math.max(1, parseInt(document.getElementById('editQuantity').value) || 1);
+      it.purchaseDate = document.getElementById('editPurchaseDate').value;
+      it.notes = document.getElementById('editNotes').value.trim();
+
+      const hex = document.getElementById('editColorHex').value;
+      const name = document.getElementById('editColorName').value.trim() || estimateColorName(hex);
+      it.color = { en: "Custom", ar: name, hex: hex };
+
+      saveState();
+      closeEditModal();
+      renderAll();
+      if (!document.getElementById('tab-history').classList.contains('hidden')) {
+        renderHistory();
+      }
+      showToast("تم حفظ التعديلات بنجاح", "✅");
+    }
+
+    // ==================== TAB 2: HISTORY (سجل المشتريات) ====================
+    function filterHistory() {
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyContainer');
+      const search = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+      const seasonFilter = document.getElementById('historySeasonFilter')?.value || 'all';
+      const typeFilter = document.getElementById('historyTypeFilter')?.value || 'all';
+      const sortBy = document.getElementById('historySortOrder')?.value || 'newest';
+
+      let filtered = [...appState.items];
+
+      if (seasonFilter !== 'all') {
+        filtered = filtered.filter(it => it.season === seasonFilter);
+      }
+      if (typeFilter !== 'all') {
+        filtered = filtered.filter(it => it.type === typeFilter);
+      }
+      if (search) {
+        filtered = filtered.filter(it => 
+          (it.piece && it.piece.toLowerCase().includes(search)) ||
+          (it.notes && it.notes.toLowerCase().includes(search)) ||
+          (it.color && it.color.ar.toLowerCase().includes(search))
+        );
+      }
+
+      // Sorting
+      if (sortBy === 'newest') {
+        filtered.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
+      } else if (sortBy === 'oldest') {
+        filtered.sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate));
+      } else if (sortBy === 'qtyDesc') {
+        filtered.sort((a, b) => (b.quantity || 1) - (a.quantity || 1));
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-10 text-center border border-slate-200">
+            <span class="text-3xl block mb-2">🔍</span>
+            <div class="font-bold text-slate-700">لا توجد نتائج تطابق بحثك</div>
+            <p class="text-xs text-slate-400 mt-1">جربي تغيير شروط الفلتر أو البحث</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group items by category for visual cards
+      const groups = {};
+      filtered.forEach(it => {
+        const cat = appState.categories[it.season]?.[it.type]?.find(c => c.id === it.categoryId);
+        const catTitle = cat ? cat.nameAr : 'أخرى';
+        const seasonName = it.season === 'winter' ? '❄️ شتوي' : '☀️ صيفي';
+        const typeName = it.type === 'home' ? '🏠 بيتي' : '👠 خروج';
+        const groupKey = `${seasonName} • ${typeName} • ${catTitle}`;
+
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push(it);
+      });
+
+      container.innerHTML = Object.entries(groups).map(([groupTitle, items]) => {
+        const groupTotal = items.reduce((s, it) => s + (it.quantity || 1), 0);
+        return `
+          <div class="bg-white rounded-2xl p-5 border border-roseGold-100 shadow-xs">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+              <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <span>🏷️ ${groupTitle}</span>
+              </h4>
+              <span class="text-xs bg-roseGold-100 text-roseGold-800 font-bold px-2 py-0.5 rounded-full">
+                ${groupTotal} قطعة
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              ${items.map(it => `
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:bg-roseGold-50/30 transition">
+                  <div>
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-slate-300 shrink-0" style="background: ${it.color.hex === 'gradient' ? 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' : it.color.hex};"></span>
+                        <b class="text-xs text-slate-900">${it.piece.split(' · ')[0]}</b>
+                      </div>
+                      ${it.quantity > 1 ? `<span class="bg-slate-200 text-slate-800 font-bold text-[10px] px-1.5 py-0.5 rounded">×${it.quantity}</span>` : ''}
+                    </div>
+
+                    <div class="text-[11px] text-slate-500 mt-1">اللون: <b class="text-slate-700">${it.color.ar}</b></div>
+                    ${it.notes ? `<div class="text-[11px] text-slate-500 mt-0.5 truncate">📝 ${it.notes}</div>` : ''}
+                  </div>
+
+                  <div class="flex items-center justify-between border-t border-slate-200/60 pt-2 mt-2 text-[11px] text-slate-400">
+                    <span>📅 ${formatArabicDate(it.purchaseDate)}</span>
+                    <div class="flex items-center gap-1">
+                      <button onclick="openEditModal('${it.id}')" title="تعديل" class="hover:text-roseGold-600 p-1">✏️</button>
+                      <button onclick="deleteItemWithQuantityPrompt('${it.id}')" title="حذف" class="hover:text-red-600 p-1">🗑️</button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==================== TAB 3: BIN (سلة المحذوفات) ====================
+    function renderBin() {
+      const container = document.getElementById('binItemsContainer');
+      const headerCount = document.getElementById('binCountHeader');
+      headerCount.textContent = `${appState.bin.reduce((s, it) => s + (it.quantity || 1), 0)} قطعة`;
+
+      if (appState.bin.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-12 text-center border border-dashed border-slate-200">
+            <span class="text-4xl block mb-2">🎉</span>
+            <div class="font-bold text-slate-700">سلة المحذوفات فارغة تماماً</div>
+            <p class="text-xs text-slate-400 mt-1">أي قطعة تحذفينها من الدولاب ستظهر هنا مع إمكانية استرجاعها</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = appState.bin.map(it => {
+        const seasonIcon = it.season === 'winter' ? '❄️ شتوي' : '☀️ صيفي';
+        const typeIcon = it.type === 'home' ? '🏠 بيتي' : '👠 خروج';
+
+        return `
+          <div class="bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="w-4 h-4 rounded-full border border-slate-300 shrink-0" style="background: ${it.color.hex === 'gradient' ? 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' : it.color.hex};"></span>
+              <div>
+                <div class="font-bold text-slate-900 text-xs sm:text-sm">
+                  ${it.piece.split(' · ')[0]} 
+                  <span class="text-slate-400 font-normal">(${it.color.ar})</span>
+                  ${it.quantity > 1 ? `<span class="bg-slate-100 text-slate-700 font-black rounded px-1.5 py-0.5 text-xs mr-1">×${it.quantity}</span>` : ''}
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap gap-2">
+                  <span>${seasonIcon} • ${typeIcon}</span>
+                  <span>• تاريخ الشراء الأصلي: <b>${formatArabicDate(it.purchaseDate)}</b></span>
+                  ${it.notes ? `<span>• 📝 ${it.notes}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button onclick="restoreItemFromBin('${it.id}')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                <span>🔄 استرجاع للدولاب</span>
+              </button>
+              <button onclick="deleteItemPermanently('${it.id}')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition">
+                <span>❌ مسح نهائي</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==================== TAB 4: DASHBOARD (لوحة التحكم) ====================
+    function setupDashboardListeners() {
+      // Intentionally empty: onchange bindings are inline on the selects
+    }
+
+    function renderDashboardCategories() {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const list = document.getElementById('dashCategoriesList');
+
+      const cats = appState.categories[season]?.[type] || [];
+
+      if (cats.length === 0) {
+        list.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">لا توجد فئات بعد</div>`;
+        return;
+      }
+
+      list.innerHTML = cats.map((cat, idx) => {
+        const itemsCount = appState.items.filter(it => it.season === season && it.type === type && it.categoryId === cat.id).length;
+        return `
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="flex flex-col">
+                <button onclick="moveCategoryPosition('${season}', '${type}', ${idx}, -1)" ${idx === 0 ? 'disabled class="opacity-20"' : 'class="hover:text-roseGold-600 font-bold"'}>▲</button>
+                <button onclick="moveCategoryPosition('${season}', '${type}', ${idx}, 1)" ${idx === cats.length - 1 ? 'disabled class="opacity-20"' : 'class="hover:text-roseGold-600 font-bold"'}>▼</button>
+              </div>
+              <div class="truncate">
+                <b class="text-slate-800">${cat.nameAr}</b>
+                <span class="text-slate-400 font-sans mr-1">(${cat.nameEn})</span>
+                <span class="text-[10px] text-slate-500 mr-1.5 bg-white px-1.5 py-0.5 rounded border border-slate-200">${itemsCount} قطعة مسجلة</span>
+              </div>
+            </div>
+
+            <button onclick="deleteCategoryFromDashboard('${season}', '${type}', '${cat.id}')" class="text-red-500 hover:text-red-700 p-1 font-bold">
+              🗑️ مسح
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      renderDashboardPiecesSelect();
+    }
+
+    function addNewCategoryFromDashboard() {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const ar = document.getElementById('newCatNameAr').value.trim();
+      const en = document.getElementById('newCatNameEn').value.trim() || ar;
+
+      if (!ar) {
+        alert("يرجى كتابة اسم الفئة بالعربي");
+        return;
+      }
+
+      if (!appState.categories[season]) appState.categories[season] = {};
+      if (!appState.categories[season][type]) appState.categories[season][type] = [];
+
+      const newId = `cat_${Date.now()}`;
+      appState.categories[season][type].push({
+        id: newId,
+        nameAr: ar,
+        nameEn: en,
+        items: []
+      });
+
+      document.getElementById('newCatNameAr').value = '';
+      document.getElementById('newCatNameEn').value = '';
+
+      saveState();
+      renderDashboardCategories();
+      renderAll();
+      showToast("تمت إضافة الفئة بنجاح", "✨");
+    }
+
+    function deleteCategoryFromDashboard(season, type, catId) {
+      const cat = appState.categories[season]?.[type]?.find(c => c.id === catId);
+      if (!cat) return;
+
+      const attachedItems = appState.items.filter(it => it.season === season && it.type === type && it.categoryId === catId);
+
+      if (attachedItems.length > 0) {
+        const confirmMsg = `تنبيه: الفئة "${cat.nameAr}" تحتوي على ${attachedItems.length} قطعة مسجلة بالدولاب.\nإذا قمتِ بمسح الفئة، سيتم نقل هذه القطع تلقائياً إلى سلة المحذوفات (Bin).\nهل ترغبين في المتابعة؟`;
+        if (!confirm(confirmMsg)) return;
+
+        // Move all attached items to Bin
+        attachedItems.forEach(it => {
+          appState.bin.unshift({
+            ...it,
+            id: 'bin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            deletedAt: new Date().toISOString()
+          });
+        });
+        appState.items = appState.items.filter(it => !(it.season === season && it.type === type && it.categoryId === catId));
+      } else {
+        if (!confirm(`هل أنت متأكدة من مسح فئة "${cat.nameAr}"؟`)) return;
+      }
+
+      // Remove category
+      appState.categories[season][type] = appState.categories[season][type].filter(c => c.id !== catId);
+
+      saveState();
+      renderDashboardCategories();
+      renderAll();
+      showToast("تم مسح الفئة", "🗑️");
+    }
+
+    function moveCategoryPosition(season, type, index, delta) {
+      const list = appState.categories[season][type];
+      const targetIndex = index + delta;
+      if (targetIndex < 0 || targetIndex >= list.length) return;
+
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+
+      saveState();
+      renderDashboardCategories();
+      renderAll();
+    }
+
+    function renderDashboardPiecesSelect() {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const select = document.getElementById('dashPiecesCategorySelect');
+      const cats = appState.categories[season]?.[type] || [];
+
+      select.innerHTML = cats.map(c => `
+        <option value="${c.id}">${c.nameAr} (${c.nameEn})</option>
+      `).join('');
+
+      renderDashboardPiecesList();
+    }
+
+    function renderDashboardPiecesList() {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const catId = document.getElementById('dashPiecesCategorySelect')?.value;
+      const list = document.getElementById('dashPiecesList');
+
+      if (!catId) {
+        list.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">لا توجد فئات</div>`;
+        return;
+      }
+
+      const cat = appState.categories[season]?.[type]?.find(c => c.id === catId);
+      if (!cat || !cat.items || cat.items.length === 0) {
+        list.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center">لا توجد قطع مضافة لهذه الفئة</div>`;
+        return;
+      }
+
+      list.innerHTML = cat.items.map((piece, i) => `
+        <div class="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs">
+          <span class="text-slate-800">${piece}</span>
+          <button onclick="deletePieceFromDashboard('${cat.id}', ${i})" class="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function addNewPieceFromDashboard() {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const catId = document.getElementById('dashPiecesCategorySelect').value;
+      const input = document.getElementById('newPieceInput');
+      const val = input.value.trim();
+
+      if (!val) return;
+
+      const cat = appState.categories[season]?.[type]?.find(c => c.id === catId);
+      if (cat) {
+        if (!cat.items) cat.items = [];
+        cat.items.push(val);
+        input.value = '';
+        saveState();
+        renderDashboardPiecesList();
+        renderWardrobeCategories();
+        showToast("تمت إضافة القطعة للقائمة المنسدلة", "✨");
+      }
+    }
+
+    function deletePieceFromDashboard(catId, index) {
+      const season = document.getElementById('dashSeasonSelect').value;
+      const type = document.getElementById('dashTypeSelect').value;
+      const cat = appState.categories[season]?.[type]?.find(c => c.id === catId);
+      if (cat && cat.items) {
+        cat.items.splice(index, 1);
+        saveState();
+        renderDashboardPiecesList();
+        renderWardrobeCategories();
+      }
+    }
+
+    // ==================== BACKUP & RESTORE ====================
+    function downloadBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        categories: appState.categories,
+        items: appState.items,
+        bin: appState.bin
+      }, null, 2));
+      const dlAnchor = document.createElement('a');
+      dlAnchor.setAttribute("href", dataStr);
+      dlAnchor.setAttribute("download", `dollab_el_aroosah_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(dlAnchor);
+      dlAnchor.click();
+      dlAnchor.remove();
+      showToast("تم تنزيل ملف النسخة الاحتياطية بنجاح 💾", "✨");
+    }
+
+    function importBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.categories && parsed.items) {
+            appState.categories = parsed.categories;
+            appState.items = parsed.items;
+            appState.bin = parsed.bin || [];
+            saveState();
+            renderAll();
+            showToast("تم استيراد كافة البيانات والملابس بنجاح! 🎉", "✨");
+          } else {
+            alert("الملف لا يحتوي على بنية بيانات دولاب العروسة الصحيحة");
+          }
+        } catch (err) {
+          alert("خطأ في قراءة ملف JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetToDefaultTaxonomyConfirm() {
+      if (confirm("هل ترغبين في استعادة جميع الفئات والقطع الافتراضية للعروسة؟ (لن يتم مسح الملابس التي قمتِ بشرائها بالفعل)")) {
+        appState.categories = JSON.parse(JSON.stringify(defaultCategories));
+        saveState();
+        renderAll();
+        renderDashboardCategories();
+        showToast("تمت استعادة التصنيفات الافتراضية كاملة 💍", "✨");
+      }
+    }
+
+    // ==================== UTILS ====================
+    function formatArabicDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function estimateColorName(hex) {
+      // Find closest color from presetColors
+      const rgb = hexToRgb(hex);
+      if (!rgb) return "لون مخصص";
+
+      let closest = presetColors[0];
+      let minDiff = Infinity;
+
+      presetColors.forEach(c => {
+        if (c.hex === 'gradient') return;
+        const cRgb = hexToRgb(c.hex);
+        if (!cRgb) return;
+        const diff = Math.pow(rgb.r - cRgb.r, 2) + Math.pow(rgb.g - cRgb.g, 2) + Math.pow(rgb.b - cRgb.b, 2);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = c;
+        }
+      });
+      return closest.ar;
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function showToast(msg, icon = '✨') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastIcon').textContent = icon;
+      document.getElementById('toastMessage').textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3000);
+    }
+
+    function openSyncModal() {
+      document.getElementById('syncModal').classList.remove('hidden');
+    }
+    function closeSyncModal() {
+      document.getElementById('syncModal').classList.add('hidden');
+    }
+
+    // Start App
+    init();
+  </script>
+</body>
+</html>
